@@ -1,12 +1,15 @@
 # Pointed Map
+
 The much faster way of filtering and finding objects through Maps
 
 ## Implement with your project
+
 ```
 npm i pointed-map --save
 ```
 
 ## Usage
+
 ```js
 const PointedMap = require('pointed-map');
 

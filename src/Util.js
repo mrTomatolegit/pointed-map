@@ -3,26 +3,20 @@ let INCREMENT = 0;
 class Util {
     constructor() {}
 
-    static recursiveProp(obj, string) {
-        const fnReg = new RegExp(/\((.+)?\)$/);
+    static recursiveProp(obj, string, beforeLast = 0) {
         const subprops = string.split('.');
-        let val = obj[subprops[0]];
-        for (let i = 1; i < subprops.length; i++) {
+        let val = obj;
+        for (let i = 0; i < subprops.length - beforeLast; i++) {
             if (!val) return;
-            let isFn = false;
-            if (fnReg.test(subprops[i])) {
-                isFn = true;
-                subprops[i] = subprops[i].replace(fnReg, '');
-            }
 
             if (val instanceof Map) {
                 val = Array.from(val.values());
             }
 
             if (Array.isArray(val)) {
-                val = val.map(x => (isFn ? x[subprops[i]]() : x[subprops[i]]));
+                val = val.map(x => x[subprops[i]]);
             } else {
-                val = isFn ? val[subprops[i]]() : val[subprops[i]];
+                val = val[subprops[i]];
             }
         }
         return val;
@@ -49,16 +43,16 @@ class Util {
     }
 
     static mapFilter(map, fn) {
-        const newMap = new Map();
+        const array = [];
         for (const i of map) {
             const key = i[0];
             const value = i[1];
             const result = fn(value, key, map);
             if (result) {
-                newMap.set(key, value);
+                array.push(value);
             }
         }
-        return newMap;
+        return array;
     }
 }
 

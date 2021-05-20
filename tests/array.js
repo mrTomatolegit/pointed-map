@@ -41,11 +41,17 @@ map.get(1).obj.values[0].value = newValue;
 const shouldBeNull2 = getOldValue();
 const shouldNotBeNull2 = getNewValue();
 
-if (!shouldBeNull1 && !shouldBeNull2 && shouldNotBeNull1 && shouldNotBeNull2) {
+if (!shouldBeNull1 && shouldNotBeNull1 && !shouldBeNull2 && shouldNotBeNull2) {
     process.env.executedFromAll
         ? (module.exports = true)
         : console.log('SUCCESS');
 } else {
+    console.log(
+        shouldBeNull1,
+        shouldNotBeNull1,
+        shouldBeNull2,
+        shouldNotBeNull2
+    );
     process.env.executedFromAll
         ? (module.exports = false)
         : console.log('FAIL');
