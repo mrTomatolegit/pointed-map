@@ -1,0 +1,25 @@
+{
+    "name": "pointed-map",
+    "version": "1.0.0",
+    "description": "Find and filter through objects in maps faster using pointers/indexes",
+    "main": "index.js",
+    "scripts": {
+        "test": "node tests/all.js"
+    },
+    "keywords": [
+        "map",
+        "fast",
+        "fastmap",
+        "indexed",
+        "index",
+        "indices",
+        "indexedmap",
+        "pointedmap",
+        "pointers",
+        "optimize",
+        "optimise",
+        "efficient"
+    ],
+    "author": "mrTomatoLegit",
+    "license": "ISC"
+}
