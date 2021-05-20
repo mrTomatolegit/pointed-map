@@ -1,1 +1,3 @@
-module.exports = require('./src/PointedMap');
+const PointedMap = require('./src/PointedMap');
+
+module.exports = PointedMap
