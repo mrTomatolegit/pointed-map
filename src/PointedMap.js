@@ -55,17 +55,91 @@ class PointedMap extends Map {
 
     /**
      *
-     * @private
-     * @param {string} property
-     * @param {any} value
-     * @return {Function}
+     * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
+     * @param {any} thisArg
+     * @returns {any|undefined}
      */
-    _filterFunction(property, value) {
-        return x => {
-            const found = PointedMap._stringToVal(x, property);
-            if (Array.isArray(found)) return found.includes(value);
-            return found === value;
-        };
+    find(fn, thisArg) {
+        if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
+        for (const [key, val] of this) {
+            if (fn(val, key, this)) return val;
+        }
+        return undefined;
+    }
+    /**
+     *
+     * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
+     * @param {any} thisArg
+     * @returns {any|undefined}
+     */
+    findKey(fn, thisArg) {
+        if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
+        for (const [key, val] of this) {
+            if (fn(val, key, this)) return key;
+        }
+        return undefined;
+    }
+    /**
+     *
+     * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
+     * @param {any} thisArg
+     * @returns {PointedMap}
+     */
+    filter(fn, thisArg) {
+        if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
+        const results = new PointedMap();
+        for (const [key, val] of this) {
+            if (fn(val, key, this)) results.set(key, val);
+        }
+        return results;
+    }
+    /**
+     *
+     * @param {number} amount
+     * @returns {object|Array<object>}
+     */
+    first(amount) {
+        if (typeof amount === 'undefined') return this.values().next().value;
+        if (amount < 0) return this.last(amount * -1);
+        amount = Math.min(this.size, amount);
+        const iter = this.values();
+        return Array.from({ length: amount }, () => iter.next().value);
+    }
+    /**
+     *
+     * @param {number} amount
+     * @returns {object|Array<object>}
+     */
+    firstKey(amount) {
+        if (typeof amount === 'undefined') return this.keys().next().value;
+        if (amount < 0) return this.lastKey(amount * -1);
+        amount = Math.min(this.size, amount);
+        const iter = this.keys();
+        return Array.from({ length: amount }, () => iter.next().value);
+    }
+    /**
+     *
+     * @param {number} amount
+     * @returns {object|Array<object>}
+     */
+    last(amount) {
+        const arr = Array.from(this.values());
+        if (typeof amount === 'undefined') return arr[arr.length - 1];
+        if (amount < 0) return this.first(amount * -1);
+        if (!amount) return [];
+        return arr.slice(-amount);
+    }
+    /**
+     *
+     * @param {number} amount
+     * @returns {object|Array<object>}
+     */
+    lastKey(amount) {
+        const arr = Array.from(this.keys());
+        if (typeof amount === 'undefined') return arr[arr.length - 1];
+        if (amount < 0) return this.firstKey(amount * -1);
+        if (!amount) return [];
+        return arr.slice(-amount);
     }
 
     /**
@@ -135,6 +209,21 @@ class PointedMap extends Map {
     deletePointFor(property) {
         if (!property) throw new TypeError('property parameter is required');
         return this._pointers.delete(property);
+    }
+
+    /**
+     *
+     * @private
+     * @param {string} property
+     * @param {any} value
+     * @return {Function}
+     */
+    _filterFunction(property, value) {
+        return x => {
+            const found = PointedMap._stringToVal(x, property);
+            if (Array.isArray(found)) return found.includes(value);
+            return found === value;
+        };
     }
 
     /**
