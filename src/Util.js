@@ -3,6 +3,13 @@ let INCREMENT = 0;
 class Util {
     constructor() {}
 
+    /**
+     *
+     * @param {object} obj
+     * @param {string} string
+     * @param {number?} beforeLast
+     * @returns {any}
+     */
     static recursiveProp(obj, string, beforeLast = 0) {
         const subprops = string.split('.');
         let val = obj;
@@ -22,6 +29,11 @@ class Util {
         return val;
     }
 
+    /**
+     *
+     * @param {string?} timestamp
+     * @returns {string}
+     */
     static generateUniqueKey(timestamp = Date.now()) {
         if (timestamp instanceof Date) timestamp = timestamp.getTime();
 
@@ -30,29 +42,18 @@ class Util {
         return parseInt(concatenated, 2).toString(36);
     }
 
-    static mapFind(map, fn) {
-        for (const i of map) {
-            const key = i[0];
-            const value = i[1];
-            const result = fn(value, key, map);
-            if (result) {
-                return result;
-            }
-        }
-        return null;
-    }
-
+    /**
+     *
+     * @param {Map} map
+     * @param {(value: string, key: any, map: Map) => boolean} fn
+     * @returns
+     */
     static mapFilter(map, fn) {
-        const array = [];
-        for (const i of map) {
-            const key = i[0];
-            const value = i[1];
-            const result = fn(value, key, map);
-            if (result) {
-                array.push(value);
-            }
-        }
-        return array;
+        let arr = [];
+        map.forEach((v, k, map) => {
+            if (fn(v, k, map)) arr.push();
+        });
+        return arr;
     }
 }
 

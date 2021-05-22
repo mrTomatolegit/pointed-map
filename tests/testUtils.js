@@ -1,11 +1,9 @@
 const PointedMap = require('../src/PointedMap');
 
-const a = new PointedMap(['value']);
+const a = new PointedMap(null, ['value']);
 
 const fail = () => {
-    process.env.executedFromAll
-        ? (module.exports = false)
-        : console.log('FAIL');
+    process.env.executedFromAll ? (module.exports = false) : console.log('FAIL');
 };
 
 a.set(1, { value: 'orange' })

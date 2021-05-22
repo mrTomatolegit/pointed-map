@@ -2,7 +2,7 @@ const PointedMap = require('../src/PointedMap');
 
 const pointerName = 'value';
 
-const map = new PointedMap([pointerName]);
+const map = new PointedMap(null, [pointerName]);
 
 map.set(1, {
     id: 1,
@@ -18,12 +18,8 @@ map.addPointerFor('lol');
 const shouldNotBeNull2 = map.getBy('lol', 'laugh');
 
 if (!shouldBeNull1 && shouldNotBeNull1 && shouldNotBeNull2) {
-    process.env.executedFromAll
-        ? (module.exports = true)
-        : console.log('SUCCESS');
+    process.env.executedFromAll ? (module.exports = true) : console.log('SUCCESS');
 } else {
     console.log(shouldBeNull1, shouldNotBeNull1);
-    process.env.executedFromAll
-        ? (module.exports = false)
-        : console.log('FAIL');
+    process.env.executedFromAll ? (module.exports = false) : console.log('FAIL');
 }

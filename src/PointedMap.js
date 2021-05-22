@@ -1,26 +1,37 @@
 const Util = require('./Util');
 
-const pointedIdProp = '[[__POINTED_ID__]]';
-const keysProp = '[[__KEYS__]]';
-const sourceObjectProp = '[[__SOURCE_OBJECT__]]';
+const pointedIdProp = '[[PointedObjectID]]';
+const keysProp = '[[Keys]]';
+const sourceObjectProp = '[[ParentObject]]';
+const pointersProp = '[[Pointers]]';
+const dontUpdateProp = '[[Gone]]';
+const proxyTarget = '[[Target]]';
 
+/**
+ *
+ * @class
+ * @type {PointedMap}
+ * @extends {Map}
+ */
 class PointedMap extends Map {
     /**
      *
+     * @type {new<K, V>(entries: Array<Array<K, V>>)}
+     * @param {Array<Array<K, V>>}
      * @param {Array<string>} pointTo
      */
-    constructor(pointTo = []) {
-        super();
+    constructor(entries = [], pointTo = []) {
+        super(entries);
 
-        /**
-         *
-         * @private
-         * @type {Map<string, Map<any, Array<any>>>}
-         */
-        this._pointers = new Map();
+        Object.defineProperty(this, pointersProp, {
+            enumerable: false,
+            configurable: true,
+            writable: false,
+            value: new Map()
+        });
 
         pointTo.forEach(prop => {
-            this._pointers.set(prop, PointedMap._createPointer());
+            this.addPointerFor(prop);
         });
     }
 
@@ -31,13 +42,43 @@ class PointedMap extends Map {
      * @return {any}
      */
     getOneBy(property, value) {
-        const pointer = this._pointers.get(property);
+        property = PointedMap._fixPointerName(property);
+        const pointer = this[pointersProp].get(property);
         if (pointer) {
             const pointed = pointer.get(value);
             return pointed ? pointed[0] : null;
         }
         console.warn(`Property "${property}" is not pointed to`);
-        return Util.mapFind(this, this._filterFunction(property, value));
+
+        return this.find(this._filterFunction(property, value));
+    }
+
+    /**
+     *
+     * @param {string} property
+     * @param {any} value
+     * @return {PointedMap<any, object>}
+     */
+    filterBy(property, value) {
+        property = PointedMap._fixPointerName(property);
+        const pointer = this[pointersProp].get(property);
+        if (pointer) {
+            const found = pointer.get(value);
+            if (found) {
+                const newMap = new PointedMap(null, Array.from(this[pointersProp].keys()));
+                found.forEach(find => {
+                    find[keysProp].forEach(key => {
+                        newMap.set(key, find);
+                    });
+                });
+                return newMap;
+            }
+            return undefined;
+        }
+        console.warn(`Property "${property}" is not pointed to`);
+
+        const filtered = this.filter(this._filterFunction(property, value));
+        return filtered.size > 0 ? filtered : undefined;
     }
 
     /**
@@ -47,22 +88,99 @@ class PointedMap extends Map {
      * @return {Array<any>}
      */
     getBy(property, value) {
-        const poiter = this._pointers.get(property);
-        if (poiter) {
-            return poiter.get(value);
+        property = PointedMap._fixPointerName(property);
+        const pointer = this[pointersProp].get(property);
+        if (pointer) {
+            return pointer.get(value) || undefined;
         }
         console.warn(`Property "${property}" is not pointed to`);
-        const filtered = Util.mapFilter(
-            this,
-            this._filterFunction(property, value)
-        );
+
+        const filtered = Util.mapFilter(this, this._filterFunction(property, value));
         return filtered.length > 0 ? filtered : undefined;
     }
 
     /**
      *
+     * @param {any} key
+     * @param {object} value Must be an object
+     * @return {this}
+     */
+    set(key, value) {
+        if (typeof value !== 'object') throw new TypeError('value parameter must be an object');
+        if (!value[keysProp]) {
+            Object.defineProperty(value, keysProp, {
+                enumerable: false,
+                configurable: true,
+                writable: false,
+                value: []
+            });
+        }
+        delete value[dontUpdateProp];
+        super.set(key, value);
+        value[keysProp].push(key);
+        this._addToPointers(value);
+        return this;
+    }
+
+    /**
+     *
+     * @param {any} key
+     * @return {boolean}
+     */
+    delete(key) {
+        const x = this.get(key);
+        if (x) {
+            if (!x[dontUpdateProp]) {
+                Object.defineProperty(x, dontUpdateProp, {
+                    enumerable: false,
+                    configurable: true,
+                    writable: false,
+                    value: true
+                });
+            }
+            x[keysProp].splice(
+                x[keysProp].findIndex(k => k === key),
+                1
+            );
+        }
+        this._removeFromPointers(x);
+        return super.delete(key);
+    }
+
+    /**
+     *
+     * @param {string} property The property pointed to (pointer name)
+     * @return {this}
+     */
+    addPointerFor(property) {
+        if (!property) throw new TypeError('property parameter is required');
+        property = PointedMap._fixPointerName(property);
+
+        this[pointersProp].delete(property);
+        this[pointersProp].set(property, PointedMap._createPointer());
+        this.forEach(x => {
+            this._addToPointers(x, [property]);
+        });
+        return this;
+    }
+
+    /**
+     *
+     * @param {string} property The property pointed to (pointer name)
+     * @return {this}
+     */
+    deletePointerFor(property) {
+        if (!property) throw new TypeError('property parameter is required');
+        property = PointedMap._fixPointerName(property);
+
+        return this[pointersProp].delete(property);
+    }
+
+    //#region Utils
+    /**
+     *
      * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
-     * @param {any} thisArg
+     * @param {any?} thisArg
      * @returns {any|undefined}
      */
     find(fn, thisArg) {
@@ -76,7 +194,7 @@ class PointedMap extends Map {
     /**
      *
      * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
-     * @param {any} thisArg
+     * @param {any?} thisArg
      * @returns {any|undefined}
      */
     findKey(fn, thisArg) {
@@ -90,12 +208,12 @@ class PointedMap extends Map {
     /**
      *
      * @param {(value: object, key, pointedmap: PointedMap) => boolean} fn
-     * @param {any} thisArg
+     * @param {any?} thisArg
      * @returns {PointedMap}
      */
     filter(fn, thisArg) {
         if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
-        const results = new PointedMap();
+        const results = new PointedMap(null, Array.from(this[pointersProp].keys()));
         for (const [key, val] of this) {
             if (fn(val, key, this)) results.set(key, val);
         }
@@ -104,7 +222,7 @@ class PointedMap extends Map {
 
     /**
      *
-     * @param {number} amount
+     * @param {number?} amount
      * @returns {object|Array<object>}
      */
     first(amount) {
@@ -117,7 +235,7 @@ class PointedMap extends Map {
 
     /**
      *
-     * @param {number} amount
+     * @param {number?} amount
      * @returns {object|Array<object>}
      */
     firstKey(amount) {
@@ -130,7 +248,7 @@ class PointedMap extends Map {
 
     /**
      *
-     * @param {number} amount
+     * @param {number?} amount
      * @returns {object|Array<object>}
      */
     last(amount) {
@@ -143,7 +261,7 @@ class PointedMap extends Map {
 
     /**
      *
-     * @param {number} amount
+     * @param {number?} amount
      * @returns {object|Array<object>}
      */
     lastKey(amount) {
@@ -153,92 +271,9 @@ class PointedMap extends Map {
         if (!amount) return [];
         return arr.slice(-amount);
     }
+    //#endregion
 
-    /**
-     *
-     * @param {any} key
-     * @param {object} value Must be an object
-     * @return {this}
-     */
-    set(key, value) {
-        if (typeof value !== 'object')
-            throw new TypeError('value parameter must be an object');
-        if (!value[keysProp]) {
-            Object.defineProperty(value, keysProp, {
-                enumerable: false,
-                configurable: true,
-                writable: false,
-                value: []
-            });
-        }
-        value[keysProp].push(key);
-        this._pointers.forEach((_, pointerName) => {
-            this._addToPointer(
-                pointerName,
-                PointedMap._stringToVal(value, pointerName),
-                value
-            );
-        });
-        super.set(key, value);
-        return this;
-    }
-
-    /**
-     *
-     * @param {any} key
-     * @return {boolean}
-     */
-    delete(key) {
-        const x = this.get(key);
-        this._pointers.forEach((_, pointerName) => {
-            this._removeFromPointer(
-                pointerName,
-                PointedMap._stringToVal(x, pointerName),
-                x
-            );
-        });
-        return super.delete(key);
-    }
-
-    /**
-     *
-     * @param {string} property The property pointed to
-     * @return {this}
-     */
-    addPointerFor(property) {
-        if (!property) throw new TypeError('property parameter is required');
-        property = property
-            .split('.')
-            .filter(a => a)
-            .join('.');
-        this._pointers.delete(property);
-        this.forEach(x => {
-            const propVALUE = PointedMap._stringToVal(x, property);
-            if (Array.isArray(propVALUE)) {
-                propVALUE.forEach(val => {
-                    this._addToPointer(property, val, x);
-                });
-            } else {
-                this._addToPointer(property, propVALUE, x);
-            }
-        });
-        return this;
-    }
-
-    /**
-     *
-     * @param {string} property The property pointed to
-     * @return {this}
-     */
-    deletePointerFor(property) {
-        if (!property) throw new TypeError('property parameter is required');
-        property = property
-            .split('.')
-            .filter(a => a)
-            .join('.');
-        return this._pointers.delete(property);
-    }
-
+    //#region Private
     /**
      *
      * @private
@@ -248,7 +283,7 @@ class PointedMap extends Map {
      */
     _filterFunction(property, value) {
         return x => {
-            const found = PointedMap._stringToVal(x, property);
+            const found = Util.recursiveProp(x, property);
             if (Array.isArray(found)) return found.includes(value);
             return found === value;
         };
@@ -257,17 +292,10 @@ class PointedMap extends Map {
     /**
      *
      * @private
-     * @param {string} name The name of the pointer
-     * @param {any} value The pointed value
-     * @param {object} x The object that contains the value
+     * @param {object} x
+     * @param {Array<string>} pointers
      */
-    _addToPointer(name, value, x) {
-        if (!this._pointers.get(name)) {
-            this._pointers.set(name, PointedMap._createPointer());
-        }
-        value = Array.isArray(value) ? value : [value];
-        this._proxifyProp(x, name);
-
+    _addToPointers(x, pointers = Array.from(this[pointersProp].keys())) {
         if (!x[pointedIdProp]) {
             Object.defineProperty(x, pointedIdProp, {
                 enumerable: false,
@@ -276,45 +304,27 @@ class PointedMap extends Map {
                 value: Util.generateUniqueKey()
             });
         }
+        this._proxifyProps(x, pointers);
+        x = this.get(x[keysProp][x[keysProp].length - 1]);
+        this[pointersProp].forEach((pointer, pointerName) => {
+            if (!pointers.includes(pointerName)) return;
 
-        if (!this._pointers.get(name).reference.get(x[pointedIdProp])) {
-            this._pointers.get(name).reference.set(x[pointedIdProp], []);
-        }
-        value.forEach(val => {
-            if (!this._pointers.get(name).get(val)) {
-                this._pointers.get(name).set(val, []);
+            let values = Util.recursiveProp(x, pointerName);
+            values = Array.isArray(values) ? values : [values];
+
+            if (!pointer.reference.get(x[pointedIdProp])) {
+                pointer.reference.set(x[pointedIdProp], []);
             }
 
-            this._pointers.get(name).reference.get(x[pointedIdProp]).push(val);
+            values.forEach(val => {
+                if (!pointer.get(val)) {
+                    pointer.set(val, []);
+                }
 
-            this._pointers.get(name).get(val).push(x);
-        });
-    }
+                pointer.reference.get(x[pointedIdProp]).push(val);
 
-    /**
-     *
-     * @private
-     * @param {string} name The name of the pointer
-     * @param {any} value The pointed value
-     * @param {object} x The object that contains the value
-     */
-    _removeFromPointer(name, value, x) {
-        this._pointers.get(name).reference.delete(x[pointedIdProp]);
-        value = Array.isArray(value) ? value : [value];
-
-        value.forEach(val => {
-            const prev = this._pointers.get(name).get(val);
-            const i = prev.findIndex(
-                a => a[pointedIdProp] === x[pointedIdProp]
-            );
-
-            if (i !== -1) {
-                prev.splice(i, 1);
-            }
-
-            if (prev.length === 0) {
-                this._pointers.get(name).delete(val);
-            }
+                pointer.get(val).push(x);
+            });
         });
     }
 
@@ -322,18 +332,74 @@ class PointedMap extends Map {
      *
      * @private
      * @param {object} x
+     * @param {Array<string>} pointers
      */
-    _update(x) {
-        this._pointers.forEach((_, pointerName) => {
-            x = this._getSourceObject(x);
-            const POINTEDID = x[pointedIdProp];
-            const previousValue = this._pointers
-                .get(pointerName)
-                .reference.get(POINTEDID);
-            const newValue = PointedMap._stringToVal(x, pointerName);
+    _removeFromPointers(x, pointers = Array.from(this[pointersProp].keys())) {
+        this[pointersProp].forEach((pointer, pointerName) => {
+            if (!pointers.includes(pointerName)) return;
 
-            this._removeFromPointer(pointerName, previousValue, x);
-            this._addToPointer(pointerName, newValue, x);
+            let values = pointer.reference.get(x[pointedIdProp]);
+            values = Array.isArray(values) ? values : [values];
+
+            pointer.reference.delete(x[pointedIdProp]);
+
+            values.forEach(val => {
+                const prev = pointer.get(val);
+                const i = prev.findIndex(a => a[pointedIdProp] === x[pointedIdProp]);
+
+                if (i !== -1) prev.splice(i, 1);
+
+                if (prev.length === 0) pointer.delete(val);
+            });
+        });
+    }
+
+    /**
+     *
+     * @private
+     * @param {object} x
+     * @param {string} propName
+     */
+    _update(x, propName = '') {
+        const pointers = Array.from(this[pointersProp].keys()).filter(pointerName =>
+            pointerName.endsWith(propName)
+        );
+        x = this._getSourceObject(x);
+
+        this._removeFromPointers(x, pointers);
+        this._addToPointers(x, pointers);
+    }
+
+    /**
+     *
+     * @private
+     * @param {object} obj
+     * @param {Array<string>} watchProps
+     * @param {object} parent
+     * @returns {object}
+     */
+    _proxify(obj, watchProps, parent) {
+        if (obj[proxyTarget]) {
+            obj = obj[proxyTarget];
+        }
+        return new Proxy(obj, {
+            set: (target, p, value) => {
+                target[p] = value;
+                if (!this._getSourceObject(target) && obj !== parent) {
+                    Object.defineProperty(target, sourceObjectProp, {
+                        enumerable: false,
+                        configurable: true,
+                        writable: false,
+                        value: parent
+                    });
+                }
+                if (watchProps.includes(p)) this._update(parent, p);
+                return true;
+            },
+            get: (target, p) => {
+                if (p === proxyTarget) return target;
+                else return target[p];
+            }
         });
     }
 
@@ -341,14 +407,52 @@ class PointedMap extends Map {
      *
      * @private
      * @param {object} obj
-     * @param {string} string
-     * @param {number} beforeLast
-     * @return {any|Array<any>}
+     * @param {Array<string>} props
      */
-    static _stringToVal(obj, string, beforeLast) {
-        return Util.recursiveProp(obj, string, beforeLast);
+    _proxifyProps(obj, props) {
+        const parents = PointedMap._resolveSameParents(props);
+        for (let parent in parents) {
+            if (parent === '') {
+                const proxified = this._proxify(obj, parents[parent], obj);
+                obj[keysProp].forEach(key => {
+                    super.set(key, proxified);
+                });
+            } else {
+                const subProps = parent.split('.');
+                const toProx = Util.recursiveProp(obj, parent);
+                if (Array.isArray(toProx)) {
+                    toProx.forEach((x, index, array) => {
+                        array[index] = this._proxify(x, parents[parent], obj);
+                    });
+                } else {
+                    const proxified = this._proxify(
+                        Util.recursiveProp(obj, parent),
+                        parents[parent],
+                        obj
+                    );
+                    Util.recursiveProp(obj, parent, 1)[subProps[subProps.length - 1]] = proxified;
+                }
+            }
+        }
     }
 
+    /**
+     *
+     * @private
+     * @param {object} obj
+     * @returns {object}
+     */
+    _getSourceObject(obj) {
+        let a = obj;
+        while (a[sourceObjectProp]) {
+            a = a[sourceObjectProp];
+        }
+        return a;
+    }
+
+    //#endregion
+
+    //#region Private Static
     /**
      *
      * @private
@@ -363,66 +467,43 @@ class PointedMap extends Map {
     /**
      *
      * @private
-     * @param {object} obj
-     * @return {object}
+     * @param {Array<string>} pointerNames
+     * @returns {{string: Array<string>}}
      */
-    _proxify(obj, watchProp, parent) {
-        return new Proxy(obj, {
-            set: (target, p, value) => {
-                target[p] = value;
-                if (!this._getSourceObject(target) && obj !== parent) {
-                    Object.defineProperty(target, sourceObjectProp, {
-                        enumerable: false,
-                        configurable: true,
-                        writable: false,
-                        value: parent
-                    });
+    static _resolveSameParents(pointerNames) {
+        let parents = {};
+        pointerNames.forEach(name => {
+            const subProps = name.split('.');
+            if (subProps.length === 1) {
+                if (!parents['']) {
+                    parents[''] = [];
                 }
-                if (p === watchProp) this._update(parent);
-                return true;
+                parents[''].push(subProps[0]);
+            } else {
+                let subProp = subProps.pop();
+                let parentName = subProps.join('.');
+                if (!parents[parentName]) {
+                    parents[parentName] = [];
+                }
+                parents[parentName].push(subProp);
             }
         });
+        return parents;
     }
 
     /**
      *
-     * @param {object} obj
-     * @param {string} prop
-     * @returns {Proxy}
-     */
-    _proxifyProp(obj, prop) {
-        const props = prop.split('.');
-        const toProx = PointedMap._stringToVal(obj, prop, 1);
-        if (Array.isArray(toProx)) {
-            toProx.forEach((x, index, array) => {
-                array[index] = this._proxify(x, props[props.length - 1], obj);
-            });
-            return;
-        }
-
-        const proxified = this._proxify(obj, props[props.length - 1], obj);
-        if (props[props.length - 2]) {
-            PointedMap._stringToVal(obj, prop, 2)[props[props.length - 2]] =
-                proxified;
-        } else {
-            obj[keysProp].forEach(key => {
-                super.set(key, proxified);
-            });
-        }
-    }
-
-    /**
      * @private
-     * @param {object} obj
-     * @returns {object}
+     * @param {string} string
+     * @returns {string}
      */
-    _getSourceObject(obj) {
-        let a = obj;
-        while (a[sourceObjectProp]) {
-            a = a[sourceObjectProp];
-        }
-        return a;
+    static _fixPointerName(string) {
+        return string
+            .split('.')
+            .map(x => x)
+            .join('.');
     }
+    //#endregion
 }
 
 module.exports = PointedMap;

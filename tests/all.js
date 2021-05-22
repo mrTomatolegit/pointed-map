@@ -28,15 +28,17 @@ process.env.executedFromAll = true;
 
 const files = fs.readdirSync(__dirname);
 
+let reviews = 0;
 let fails = 0;
 
 files.forEach(file => {
     if (!file.endsWith('.js') || file === basename(__filename)) return;
     console.log('-'.repeat(60));
-    process.stdout.write(file + ': ');
+    console.log(file + ': ');
     const result = require(`./${file}`);
     if (typeof result == 'object') {
         console.log(yellowText('REQUIRES REVIEW'));
+        reviews++;
     } else if (result) {
         console.log(greenText('SUCCESS'));
     } else {
@@ -45,5 +47,8 @@ files.forEach(file => {
     }
 });
 
-const finalText = `\n\n>>> All tests executed with ${fails} failures`;
+console.log(yellowText(`\n\n>> ${reviews} tests require a review`));
+const finalText = `>>> All tests executed with ${fails} failures`;
 console.log(fails > 0 ? redText(finalText) : greenText(finalText));
+
+(''); // Add a breakpoint on this line

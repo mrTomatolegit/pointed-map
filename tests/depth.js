@@ -6,7 +6,7 @@ const oldValue = 'old';
 
 const newValue = 'new';
 
-const map = new PointedMap([pointerName]);
+const map = new PointedMap(null, [pointerName]);
 
 map.set(1, {
     id: 1,
@@ -44,17 +44,8 @@ const shouldBeNull2 = getOldValue();
 const shouldNotBeNull2 = getNewValue();
 
 if (!shouldBeNull1 && shouldNotBeNull1 && !shouldBeNull2 && shouldNotBeNull2) {
-    process.env.executedFromAll
-        ? (module.exports = true)
-        : console.log('SUCCESS');
+    process.env.executedFromAll ? (module.exports = true) : console.log('SUCCESS');
 } else {
-    console.log(
-        shouldBeNull1,
-        shouldNotBeNull1,
-        shouldBeNull2,
-        shouldNotBeNull2
-    );
-    process.env.executedFromAll
-        ? (module.exports = false)
-        : console.log('FAIL');
+    console.log(shouldBeNull1, shouldNotBeNull1, shouldBeNull2, shouldNotBeNull2);
+    process.env.executedFromAll ? (module.exports = false) : console.log('FAIL');
 }
