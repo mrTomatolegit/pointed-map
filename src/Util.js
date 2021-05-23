@@ -55,6 +55,50 @@ class Util {
         });
         return arr;
     }
+
+    /**
+     *
+     * @param {"undefined"|"bigint"|"boolean"|"function"|"number"|"string"|"symbol"|"object"|"null"|"array"} type
+     * @param {any} value
+     */
+    static isSameType(type, value) {
+        let isSame = typeof value === type;
+        if (Array.isArray(value)) isSame = type === 'array';
+        if (value === null) isSame = type === 'null';
+        return isSame;
+    }
+
+    /**
+     *
+     * @param {string} valueName
+     * @param {"undefined"|"bigint"|"boolean"|"function"|"number"|"string"|"symbol"|"object"|"null"|"array"} expectedType
+     * @param {any} received
+     */
+    static createInvalidTypeError(valueName, expectedType, received, deleteStack=3) {
+        let passedIn = typeof received;
+        if (Array.isArray(received)) passedIn = 'array';
+        if (received === null) passedIn = null;
+        return Util.createTypeError(
+            `${valueName} must be type of ${expectedType}, passed in ${passedIn}`,
+            deleteStack
+        );
+    }
+
+    /**
+     *
+     * @param {string} valueName
+     * @param {"undefined"|"bigint"|"boolean"|"function"|"number"|"string"|"symbol"|"object"|"null"|"array"} expectedType
+     * @param {any} received
+     */
+    static createTypeError(message, deleteStack = 3) {
+        const typeError = new TypeError(message);
+        if (typeError.stack) {
+            const lines = typeError.stack.split('\n');
+            lines.splice(1, deleteStack);
+            typeError.stack = lines.join('\n');
+        }
+        return typeError;
+    }
 }
 
 module.exports = Util;

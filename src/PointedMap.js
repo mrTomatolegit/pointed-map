@@ -1,27 +1,55 @@
+'use strict';
 const Util = require('./Util');
 
 const pointedIdProp = '[[PointedObjectID]]';
 const keysProp = '[[Keys]]';
 const sourceObjectProp = '[[ParentObject]]';
 const pointersProp = '[[Pointers]]';
-const dontUpdateProp = '[[Gone]]';
+const dontUpdateProp = '[[NoLongerPointed]]';
 const proxyTarget = '[[Target]]';
 
 /**
  *
- * @class
- * @type {PointedMap}
- * @extends {Map}
+ * @interface
  */
-class PointedMap extends Map {
+class PointedMapInterface extends Map {
     /**
      *
-     * @type {new<K, V>(entries: Array<Array<K, V>>)}
-     * @param {Array<Array<K, V>>}
+     * @param {Array<Array<any, object>>} entries
      * @param {Array<string>} pointTo
      */
+    constructor(entries, pointTo) {
+        if (!Util.isSameType('array', entries))
+            throw Util.createInvalidTypeError("new PointedMap()'s arg0", 'array', entries, 4);
+
+        if (!Util.isSameType('array', pointTo))
+            throw Util.createInvalidTypeError("new PointedMap()'s arg1", 'array', pointTo, 4);
+
+        try {
+            super(entries);
+        } catch {
+            throw Util.createTypeError(
+                "new PointedMap()'s arg0 must be structured like this: [ [key, object] ]"
+            );
+        }
+    }
+}
+
+/**
+ *
+ * @class
+ * @extends {Map}
+ */
+class PointedMap extends PointedMapInterface {
+    /**
+     *
+     * @param {Array<Array<K, object>>?} entries
+     * @param {Array<string>?} pointTo
+     */
     constructor(entries = [], pointTo = []) {
-        super(entries);
+        if (!entries) entries = []; // null does not get replaced by default
+        if (!pointTo) pointTo = [];
+        super(entries, pointTo);
 
         Object.defineProperty(this, pointersProp, {
             enumerable: false,
@@ -42,13 +70,16 @@ class PointedMap extends Map {
      * @return {any}
      */
     getOneBy(property, value) {
+        if (!Util.isSameType('string', property))
+            throw Util.createInvalidTypeError("getOneBy()'s arg0", 'string', property);
+
         property = PointedMap._fixPointerName(property);
         const pointer = this[pointersProp].get(property);
         if (pointer) {
             const pointed = pointer.get(value);
             return pointed ? pointed[0] : null;
         }
-        console.warn(`Property "${property}" is not pointed to`);
+        console.warn(`Property '${property}' is not pointed to`);
 
         return this.find(this._filterFunction(property, value));
     }
@@ -60,6 +91,9 @@ class PointedMap extends Map {
      * @return {PointedMap<any, object>}
      */
     filterBy(property, value) {
+        if (!Util.isSameType('string', property))
+            throw Util.createInvalidTypeError("filterBy()'s arg0", 'string', property);
+
         property = PointedMap._fixPointerName(property);
         const pointer = this[pointersProp].get(property);
         if (pointer) {
@@ -75,7 +109,7 @@ class PointedMap extends Map {
             }
             return undefined;
         }
-        console.warn(`Property "${property}" is not pointed to`);
+        console.warn(`Property '${property}' is not pointed to`);
 
         const filtered = this.filter(this._filterFunction(property, value));
         return filtered.size > 0 ? filtered : undefined;
@@ -88,12 +122,15 @@ class PointedMap extends Map {
      * @return {Array<any>}
      */
     getBy(property, value) {
+        if (!Util.isSameType('string', property))
+            throw Util.createInvalidTypeError("getBy()'s arg0", 'string', property);
+
         property = PointedMap._fixPointerName(property);
         const pointer = this[pointersProp].get(property);
         if (pointer) {
             return pointer.get(value) || undefined;
         }
-        console.warn(`Property "${property}" is not pointed to`);
+        console.warn(`Property '${property}' is not pointed to`);
 
         const filtered = Util.mapFilter(this, this._filterFunction(property, value));
         return filtered.length > 0 ? filtered : undefined;
@@ -106,7 +143,9 @@ class PointedMap extends Map {
      * @return {this}
      */
     set(key, value) {
-        if (typeof value !== 'object') throw new TypeError('value parameter must be an object');
+        if (!Util.isSameType('object', value) && !Util.isSameType('array', value))
+            throw Util.createInvalidTypeError("set()'s arg1", 'object', value);
+
         if (!value[keysProp]) {
             Object.defineProperty(value, keysProp, {
                 enumerable: false,
@@ -153,7 +192,9 @@ class PointedMap extends Map {
      * @return {this}
      */
     addPointerFor(property) {
-        if (!property) throw new TypeError('property parameter is required');
+        if (!Util.isSameType('string', property))
+            throw Util.createInvalidTypeError("addPointerFor()'s arg0", 'string', property);
+
         property = PointedMap._fixPointerName(property);
 
         this[pointersProp].delete(property);
@@ -170,7 +211,9 @@ class PointedMap extends Map {
      * @return {this}
      */
     deletePointerFor(property) {
-        if (!property) throw new TypeError('property parameter is required');
+        if (!Util.isSameType('string', property))
+            throw Util.createInvalidTypeError("deletePointerFor()'s arg0", 'string', property);
+
         property = PointedMap._fixPointerName(property);
 
         return this[pointersProp].delete(property);
