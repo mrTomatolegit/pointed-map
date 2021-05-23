@@ -1,6 +1,6 @@
 {
   "name": "pointed-map",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Find and filter through objects in maps faster using pointers/indexes",
   "main": "index.js",
   "types": "./typings/index.d.ts",
