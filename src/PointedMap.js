@@ -338,7 +338,7 @@ class PointedMap extends PointedMapInterface {
      * @param {object} x
      * @param {Array<string>} pointers
      */
-    _addToPointers(x, pointers = Array.from(this[pointersProp].keys())) {
+    _addToPointers(x, pointers = Array.from(this[pointersProp].keys()), isUpdating = false) {
         if (!x[pointedIdProp]) {
             Object.defineProperty(x, pointedIdProp, {
                 enumerable: false,
@@ -347,7 +347,7 @@ class PointedMap extends PointedMapInterface {
                 value: Util.generateUniqueKey()
             });
         }
-        this._proxifyProps(x, pointers);
+        if (!isUpdating) this._proxifyProps(x, pointers);
         x = this.get(x[keysProp][x[keysProp].length - 1]);
         this[pointersProp].forEach((pointer, pointerName) => {
             if (!pointers.includes(pointerName)) return;
@@ -410,7 +410,7 @@ class PointedMap extends PointedMapInterface {
         x = this._getSourceObject(x);
 
         this._removeFromPointers(x, pointers);
-        this._addToPointers(x, pointers);
+        this._addToPointers(x, pointers, true);
     }
 
     /**
