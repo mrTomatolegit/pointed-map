@@ -51,13 +51,6 @@ class PointedMap extends PointedMapInterface {
         if (!pointTo) pointTo = [];
         super(entries, pointTo);
 
-        Object.defineProperty(this, pointersProp, {
-            enumerable: false,
-            configurable: true,
-            writable: false,
-            value: new Map()
-        });
-
         pointTo.forEach(prop => {
             this.addPointerFor(prop);
         });
@@ -70,6 +63,8 @@ class PointedMap extends PointedMapInterface {
      * @return {any}
      */
     getOneBy(property, value) {
+        this._addThisPointers();
+
         if (!Util.isSameType('string', property))
             throw Util.createInvalidTypeError("getOneBy()'s arg0", 'string', property);
 
@@ -77,7 +72,7 @@ class PointedMap extends PointedMapInterface {
         const pointer = this[pointersProp].get(property);
         if (pointer) {
             const pointed = pointer.get(value);
-            return pointed ? pointed[0] : null;
+            return pointed ? pointed[0] : undefined;
         }
         console.warn(`Property '${property}' is not pointed to`);
 
@@ -91,6 +86,8 @@ class PointedMap extends PointedMapInterface {
      * @return {PointedMap<any, object>}
      */
     filterBy(property, value) {
+        this._addThisPointers();
+
         if (!Util.isSameType('string', property))
             throw Util.createInvalidTypeError("filterBy()'s arg0", 'string', property);
 
@@ -98,21 +95,25 @@ class PointedMap extends PointedMapInterface {
         const pointer = this[pointersProp].get(property);
         if (pointer) {
             const found = pointer.get(value);
+            let pointTo = Array.from(this[pointersProp].keys());
+            pointTo.splice(
+                pointTo.findIndex(p => p === property),
+                1
+            );
+            const newMap = new PointedMap(null, pointTo);
             if (found) {
-                const newMap = new PointedMap(null, Array.from(this[pointersProp].keys()));
                 found.forEach(find => {
                     find[keysProp].forEach(key => {
                         newMap.set(key, find);
                     });
                 });
-                return newMap;
             }
-            return undefined;
+            return newMap;
         }
         console.warn(`Property '${property}' is not pointed to`);
 
         const filtered = this.filter(this._filterFunction(property, value));
-        return filtered.size > 0 ? filtered : undefined;
+        return filtered;
     }
 
     /**
@@ -122,6 +123,8 @@ class PointedMap extends PointedMapInterface {
      * @return {Array<any>}
      */
     getBy(property, value) {
+        this._addThisPointers();
+
         if (!Util.isSameType('string', property))
             throw Util.createInvalidTypeError("getBy()'s arg0", 'string', property);
 
@@ -192,6 +195,8 @@ class PointedMap extends PointedMapInterface {
      * @return {this}
      */
     addPointerFor(property) {
+        this._addThisPointers();
+
         if (!Util.isSameType('string', property))
             throw Util.createInvalidTypeError("addPointerFor()'s arg0", 'string', property);
 
@@ -211,6 +216,8 @@ class PointedMap extends PointedMapInterface {
      * @return {this}
      */
     deletePointerFor(property) {
+        this._addThisPointers();
+
         if (!Util.isSameType('string', property))
             throw Util.createInvalidTypeError("deletePointerFor()'s arg0", 'string', property);
 
@@ -255,6 +262,8 @@ class PointedMap extends PointedMapInterface {
      * @returns {PointedMap}
      */
     filter(fn, thisArg) {
+        this._addThisPointers();
+
         if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
         const results = new PointedMap(null, Array.from(this[pointersProp].keys()));
         for (const [key, val] of this) {
@@ -338,7 +347,13 @@ class PointedMap extends PointedMapInterface {
      * @param {object} x
      * @param {Array<string>} pointers
      */
-    _addToPointers(x, pointers = Array.from(this[pointersProp].keys()), isUpdating = false) {
+    _addToPointers(x, pointers, isUpdating = false) {
+        this._addThisPointers();
+
+        if (!pointers) {
+            pointers = Array.from(this[pointersProp].keys());
+        }
+
         if (!x[pointedIdProp]) {
             Object.defineProperty(x, pointedIdProp, {
                 enumerable: false,
@@ -377,7 +392,12 @@ class PointedMap extends PointedMapInterface {
      * @param {object} x
      * @param {Array<string>} pointers
      */
-    _removeFromPointers(x, pointers = Array.from(this[pointersProp].keys())) {
+    _removeFromPointers(x, pointers) {
+        this._addThisPointers();
+
+        if (!pointers) {
+            pointers = Array.from(this[pointersProp].keys());
+        }
         this[pointersProp].forEach((pointer, pointerName) => {
             if (!pointers.includes(pointerName)) return;
 
@@ -404,6 +424,8 @@ class PointedMap extends PointedMapInterface {
      * @param {string} propName
      */
     _update(x, propName = '') {
+        this._addThisPointers();
+
         const pointers = Array.from(this[pointersProp].keys()).filter(pointerName =>
             pointerName.endsWith(propName)
         );
@@ -491,6 +513,17 @@ class PointedMap extends PointedMapInterface {
             a = a[sourceObjectProp];
         }
         return a;
+    }
+
+    _addThisPointers() {
+        if (!this[pointersProp]) {
+            Object.defineProperty(this, pointersProp, {
+                enumerable: false,
+                configurable: true,
+                writable: false,
+                value: new Map()
+            });
+        }
     }
 
     //#endregion

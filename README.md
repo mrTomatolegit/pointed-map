@@ -38,7 +38,7 @@ map.filterBy('bar', 'Lorem');
 
 ## Good to know
 
--   `getBy` and `getOneBy` have the same speed
+-   `getBy()` and `getOneBy()` have the same speed
 
 ## Usage
 
@@ -64,7 +64,7 @@ const map = new PointedMap(entries, ['foo', 'bar']);
 -   property: `string`
 -   value: `any`
 
-**Returns**: First matching value
+**Returns**: `object` || `undefined`
 
 ```js
 const got = map.getOneBy('bar', 'Lorem');
@@ -78,7 +78,7 @@ console.log(got.foo);
 -   property: `string`
 -   value: `any`
 
-**Returns**: Array of matching values
+**Returns**: `Array<object>` || `undefined`
 
 ```js
 map.getBy('bar', 'Lorem').forEach(x => {
@@ -93,7 +93,9 @@ map.getBy('bar', 'Lorem').forEach(x => {
 -   property: `string`
 -   value: `any`
 
-**Returns**: PointedMap filled with matching values
+**Returns**: `PointedMap<key, object>`
+
+**Info**: The property will not be pointed to in the returned PointedMap
 
 `getBy()` will **always** be faster than `filterBy()`
 
