@@ -159,7 +159,7 @@ class PointedMap extends PointedMapInterface {
         }
         delete value[dontUpdateProp];
         super.set(key, value);
-        value[keysProp].push(key);
+        if (!value[keysProp].includes(key)) value[keysProp].push(key);
         this._addToPointers(value);
         return this;
     }
