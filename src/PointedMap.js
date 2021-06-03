@@ -60,7 +60,7 @@ class PointedMap extends PointedMapInterface {
      *
      * @param {string} property
      * @param {any} value
-     * @return {any}
+     * @return {object}
      */
     getOneBy(property, value) {
         this._addThisPointers();
@@ -120,7 +120,7 @@ class PointedMap extends PointedMapInterface {
      *
      * @param {string} property
      * @param {any} value
-     * @return {Array<any>}
+     * @return {Array<object>}
      */
     getBy(property, value) {
         this._addThisPointers();
@@ -213,7 +213,7 @@ class PointedMap extends PointedMapInterface {
     /**
      *
      * @param {string} property The property pointed to (pointer name)
-     * @return {this}
+     * @return {boolean}
      */
     deletePointerFor(property) {
         this._addThisPointers();
