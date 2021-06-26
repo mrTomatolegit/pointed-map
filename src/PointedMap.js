@@ -184,8 +184,8 @@ class PointedMap extends PointedMapInterface {
                 x[keysProp].findIndex(k => k === key),
                 1
             );
+            this._removeFromPointers(x);
         }
-        this._removeFromPointers(x);
         return super.delete(key);
     }
 
@@ -395,9 +395,8 @@ class PointedMap extends PointedMapInterface {
     _removeFromPointers(x, pointers) {
         this._addThisPointers();
 
-        if (!pointers) {
-            pointers = Array.from(this[pointersProp].keys());
-        }
+        if (!pointers) pointers = Array.from(this[pointersProp].keys());
+
         this[pointersProp].forEach((pointer, pointerName) => {
             if (!pointers.includes(pointerName)) return;
 
@@ -431,6 +430,8 @@ class PointedMap extends PointedMapInterface {
         );
         x = this._getSourceObject(x);
 
+        if (x[keysProp].length == 0) return;
+
         this._removeFromPointers(x, pointers);
         this._addToPointers(x, pointers, true);
     }
@@ -444,9 +445,8 @@ class PointedMap extends PointedMapInterface {
      * @returns {object}
      */
     _proxify(obj, watchProps, parent) {
-        if (obj[proxyTarget]) {
-            obj = obj[proxyTarget];
-        }
+        if (obj[proxyTarget]) obj = obj[proxyTarget];
+
         return new Proxy(obj, {
             set: (target, p, value) => {
                 target[p] = value;
