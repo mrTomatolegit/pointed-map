@@ -38,8 +38,8 @@ class Util {
         if (timestamp instanceof Date) timestamp = timestamp.getTime();
 
         if (INCREMENT >= 4095) INCREMENT = 0;
-        const concatenated = timestamp.toString(2).concat(INCREMENT++);
-        return parseInt(concatenated, 2).toString(36);
+        const concatenated = timestamp.toString(2).concat((INCREMENT++).toString(2));
+        return parseInt(concatenated, 2).toString(32);
     }
 
     /**
