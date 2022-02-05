@@ -149,6 +149,7 @@ class PointedMap extends PointedMapInterface {
         if (!Util.isSameType('object', value) && !Util.isSameType('array', value))
             throw Util.createInvalidTypeError("set()'s arg1", 'object', value);
 
+        this.delete(key);
         if (!value[keysProp]) {
             Object.defineProperty(value, keysProp, {
                 enumerable: false,
@@ -250,7 +251,7 @@ class PointedMap extends PointedMapInterface {
     findKey(fn, thisArg) {
         if (typeof thisArg !== 'undefined') fn = fn.bind(thisArg);
         for (const [key, val] of this) {
-            if (fn(val, key, this)) return key;
+            if (fn(key, val, this)) return key;
         }
         return undefined;
     }
@@ -350,9 +351,7 @@ class PointedMap extends PointedMapInterface {
     _addToPointers(x, pointers, isUpdating = false) {
         this._addThisPointers();
 
-        if (!pointers) {
-            pointers = Array.from(this[pointersProp].keys());
-        }
+        if (!pointers) pointers = Array.from(this[pointersProp].keys());
 
         if (!x[pointedIdProp]) {
             Object.defineProperty(x, pointedIdProp, {
@@ -485,6 +484,7 @@ class PointedMap extends PointedMapInterface {
             } else {
                 const subProps = parent.split('.');
                 const toProx = Util.recursiveProp(obj, parent);
+                if (typeof toProx !== 'object') return;
                 if (Array.isArray(toProx)) {
                     toProx.forEach((x, index, array) => {
                         array[index] = this._proxify(x, parents[parent], obj);
