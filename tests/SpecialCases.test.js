@@ -1,5 +1,5 @@
 const PointedMap = require('../src/PointedMap');
-const { test, expect } = require('@jest/globals');
+const { test, expect, beforeEach } = require('@jest/globals');
 
 const foo = 'foo';
 
@@ -85,7 +85,7 @@ test('Circular', () => {
 test('Deep object', () => {
     const pointerName = 'obj.obj2.obj3.obj4.obj5.obj6.obj7.value';
 
-    const oldValue = foo
+    const oldValue = foo;
     const newValue = 'fee';
 
     const map = new PointedMap(null, [pointerName]);

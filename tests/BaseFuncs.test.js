@@ -1,5 +1,5 @@
 const PointedMap = require('../src/PointedMap');
-const { test, expect } = require('@jest/globals');
+const { test, expect, beforeEach } = require('@jest/globals');
 
 const foo = 'foo';
 
@@ -74,6 +74,7 @@ test('Blocks non objects', () => {
     try {
         map.set(1, 'test');
         expect(false).toBe(true);
+        // eslint-disable-next-line no-empty
     } catch {}
 });
 

@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 const PointedMap = require('../src/PointedMap');
 const { test, expect } = require('@jest/globals');
 

@@ -1,5 +1,6 @@
 const Util = require('../src/Util');
 const rl = require('readline');
+const { test, expect } = require('@jest/globals');
 
 test('Keys are unique', () => {
     const samples = 10 ** 6;
@@ -8,12 +9,14 @@ test('Keys are unique', () => {
     console.log('Testing key generation with ' + samples + ' samples');
 
     process.stdout.write(0 + '/' + samples);
+
+    let i = 0;
     let interval = setInterval(() => {
         rl.cursorTo(process.stdout, 0);
         process.stdout.write(i + '/' + samples);
     }, 500);
 
-    for (let i = 0; i < samples; i++) {
+    for (i = 0; i < samples; i++) {
         set.add(Util.generateUniqueKey());
     }
 
