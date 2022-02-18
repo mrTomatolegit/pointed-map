@@ -55,31 +55,17 @@ test('Change 2', () => {
 });
 
 test('Circular', () => {
-    class Parent {
-        constructor() {
-            this.children = [];
-        }
+    const a = {}
+    const b = {}
+    a.b = b
+    b.a = a
 
-        addChild(child) {
-            this.children.push(child);
-        }
-    }
+    const map = new PointedMap(null, ['b']);
 
-    class Child {
-        constructor(parent) {
-            this.parent = parent;
-        }
-    }
+    map.set(1, a);
 
-    const parent = new Parent();
-    parent.addChild(new Child(parent));
-
-    const map = new PointedMap(null, ['parent']);
-
-    map.set(1, new Child(parent));
-
-    expect(map.getBy('parent', new Parent())).toBeUndefined();
-    expect(map.getBy('parent', parent)).toBeDefined();
+    expect(map.getBy('b', b).length).toBe(0);
+    expect(map.getBy('b', map.get(1).b).length).toBe(1);
 });
 
 test('Deep object', () => {
@@ -118,4 +104,18 @@ test('Deep object', () => {
 
     expect(get(oldValue)).toBeUndefined();
     expect(get(newValue)).toBeDefined();
+});
+
+test('setter getter', () => {
+    _a = 'x';
+    map.set(1, {
+        set a(v) {
+            _a = v;
+        },
+        get a() {
+            return _a;
+        }
+    });
+    map._addPointer('a');
+    expect(map.getOneBy('a', 'x')).toBeDefined();
 });

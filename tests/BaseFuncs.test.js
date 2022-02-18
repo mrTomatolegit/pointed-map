@@ -38,19 +38,24 @@ beforeEach(() => {
 });
 
 test('Basic', () => {
-    expect(map.getBy('indexed', 'fee')).toBeUndefined();
-    expect(map.getBy('indexed', foo)).toBeDefined();
+    expect(map.getBy('indexed', 'fee').length).toBe(0);
+    expect(map.getBy('indexed', foo).length).toBe(1);
+
+    map.get(1).indexed = 'fee';
+
+    expect(map.getBy('indexed', 'fee').length).toBe(1);
 
     map.delete(1);
 
-    expect(map.getBy('indexed', foo)).toBeUndefined();
+    expect(map.getBy('indexed', foo).length).toBe(0);
+    expect(map.getBy('indexed', 'fee').length).toBe(0);
 });
 
 test('Add New Pointer', () => {
-    expect(map.getBy('indexed', 'fee')).toBeUndefined();
+    expect(map.getBy('indexed', 'fee').length).toBe(0);
     expect(map.getBy('indexed', foo)).toBeDefined();
 
-    map.addPointerFor('notIndexed');
+    map._addPointer('notIndexed');
 
     expect(map.getBy('notIndexed', foo)).toBeDefined();
 });
@@ -61,13 +66,18 @@ test('Array indexing', () => {
 
     const get = x => map.getBy('array.indexed', x);
 
-    expect(get(newValue)).toBeUndefined();
-    expect(get(oldValue)).toBeDefined();
+    expect(get(newValue).length).toBe(0);
+    expect(get(oldValue).length).toBe(1);
 
-    map.get(1).array.indexed = newValue;
+    map.get(1).array[0].indexed = newValue;
 
-    expect(get(oldValue)).toBeDefined();
-    expect(get(newValue)).toBeUndefined();
+    expect(get(oldValue).length).toBe(0);
+    expect(get(newValue).length).toBe(1);
+
+    map.delete(1);
+
+    expect(get(oldValue).length).toBe(0);
+    expect(get(newValue).length).toBe(0);
 });
 
 test('Blocks non objects', () => {
@@ -83,7 +93,7 @@ test('Delete inexistant does nothing', () => {
 });
 
 test('Get By object', () => {
-    map.addPointerFor('object');
+    map._addPointer('object');
     expect(map.getBy('object', map.get(1).object)).toBeDefined();
 });
 
@@ -111,3 +121,9 @@ test('Delete existing keys', () => {
 
     expect(map.getBy('indexed', 'foo').length).toBe(1);
 });
+
+test("Clear should clear", () => {
+    map.clear();
+
+    expect(map.getBy('indexed', 'foo').length).toBe(0);
+})

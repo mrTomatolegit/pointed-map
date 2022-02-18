@@ -66,10 +66,10 @@ test('set no args', () => {
     } catch {}
 });
 
-test('addPointerFor no args', () => {
+test('_addPointer no args', () => {
     try {
         const map = new PointedMap();
-        map.addPointerFor();
+        map._addPointer();
         fail();
     } catch {}
 });

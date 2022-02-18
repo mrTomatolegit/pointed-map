@@ -1,11 +1,11 @@
 {
   "name": "pointed-map",
-  "version": "2.0.7",
+  "version": "3.0.0",
   "description": "Find and filter through objects in maps faster using pointers/indexes",
   "main": "index.js",
   "types": "./typings/index.d.ts",
   "scripts": {
-    "test": "jest ./test"
+    "test": "jest ."
   },
   "keywords": [
     "map",
@@ -36,5 +36,8 @@
   "homepage": "https://github.com/mrTomatolegit/pointed-map#readme",
   "devDependencies": {
     "jest": "^27.5.0"
-  }
+  },
+  "bundledDependencies": [
+    "object-observer"
+  ]
 }

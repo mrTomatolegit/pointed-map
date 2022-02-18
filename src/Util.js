@@ -1,8 +1,4 @@
-let INCREMENT = 0;
-
-class Util {
-    constructor() {}
-
+class Util extends null {
     /**
      *
      * @param {object} obj
@@ -21,8 +17,8 @@ class Util {
             }
 
             if (Array.isArray(val)) {
-                val = val.map(x => x[subprops[i]]);
-            } else {
+                val = val.map(x => (x ? x[subprops[i]] : undefined));
+            } else if (this.isSameType('object', val)) {
                 val = val[subprops[i]];
             }
         }
@@ -31,29 +27,31 @@ class Util {
 
     /**
      *
-     * @param {string?} timestamp
-     * @returns {string}
+     * @param {object} obj
+     * @param {string} string
+     * @returns {any}
      */
-    static generateUniqueKey(timestamp = Date.now()) {
-        if (timestamp instanceof Date) timestamp = timestamp.getTime();
+    static recursiveExistsIn(obj, string) {
+        const subkeys = string.split('.');
+        for (let i = 0; i < subkeys.length; i++) {
+            const key = subkeys[i];
+            const subval = obj[key];
 
-        if (INCREMENT >= 4095) INCREMENT = 0;
-        const concatenated = timestamp.toString(2).concat((INCREMENT++).toString(2));
-        return parseInt(concatenated, 2).toString(32);
-    }
+            if (this.isSameType('array', subval)) {
+                return subval.map(x => this.recursiveExistsIn(x, subkeys.slice(i + 1).join('.')));
+            } else if (this.isSameType('object', subval)) {
+                return this.recursiveExistsIn(subval, subkeys.slice(i + 1).join('.'));
+            } else if (subkeys.length === 1) {
+                if (subkeys[0].length == 0) return true;
 
-    /**
-     *
-     * @param {Map} map
-     * @param {(value: string, key: any, map: Map) => boolean} fn
-     * @returns
-     */
-    static mapFilter(map, fn) {
-        let arr = [];
-        map.forEach((v, k, map) => {
-            if (fn(v, k, map)) arr.push();
-        });
-        return arr;
+                if (this.isSameType('object', obj)) return subkeys[0] in obj;
+
+                if (this.isSameType('array', obj))
+                    return obj.map(x => this.recursiveExistsIn(x, subkeys.slice(i + 1).join('.')));
+
+                return false;
+            } else return false;
+        }
     }
 
     /**
@@ -66,38 +64,6 @@ class Util {
         if (Array.isArray(value)) isSame = type === 'array';
         if (value === null) isSame = type === 'null';
         return isSame;
-    }
-
-    /**
-     *
-     * @param {string} valueName
-     * @param {"undefined"|"bigint"|"boolean"|"function"|"number"|"string"|"symbol"|"object"|"null"|"array"} expectedType
-     * @param {any} received
-     */
-    static createInvalidTypeError(valueName, expectedType, received, deleteStack=3) {
-        let passedIn = typeof received;
-        if (Array.isArray(received)) passedIn = 'array';
-        if (received === null) passedIn = null;
-        return Util.createTypeError(
-            `${valueName} must be type of ${expectedType}, passed in ${passedIn}`,
-            deleteStack
-        );
-    }
-
-    /**
-     *
-     * @param {string} valueName
-     * @param {"undefined"|"bigint"|"boolean"|"function"|"number"|"string"|"symbol"|"object"|"null"|"array"} expectedType
-     * @param {any} received
-     */
-    static createTypeError(message, deleteStack = 3) {
-        const typeError = new TypeError(message);
-        if (typeError.stack) {
-            const lines = typeError.stack.split('\n');
-            lines.splice(1, deleteStack);
-            typeError.stack = lines.join('\n');
-        }
-        return typeError;
     }
 }
 
